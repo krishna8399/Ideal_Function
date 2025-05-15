@@ -17,8 +17,8 @@ from database_writer import write_database              # Module to write the re
 
 train_data_function, ideal_data_function, test_data_function = load_all_data(
     "data/ideal.csv",  # Path to the ideal functions file.
-    "test.csv",        # Path to the test data file.
-    "train.csv"        # Path to the training data file.
+    "data/test.csv",        # Path to the test data file.
+    "data/train.csv"        # Path to the training data file.
 )
 
 # Data loading completed.
@@ -56,7 +56,7 @@ matched_test_points = assign_test_point(
 # create a new table if it doesn't exist.
 write_database(
     matched_test_points,  # Matched test points.
-    db_path="data/ideal.db"  # Path to the SQLite database.
+    db_path="db/ideal.db"  # Path to the SQLite database.
     )
 
 # -----------------------------------------------

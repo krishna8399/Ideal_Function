@@ -1,7 +1,7 @@
 import sqlite3
 import pandas as pd
 
-def write_database(matched_test_points: pd.DataFrame, db_path="data/ideal.db"):
+def write_database(matched_test_points: pd.DataFrame, db_path="db/ideal.db"):
     """
     Writes the matched test points to an SQLite database.
     If the table does not exist, it will be created.
