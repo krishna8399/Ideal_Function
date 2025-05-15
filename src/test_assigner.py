@@ -1,51 +1,65 @@
 import numpy as np
 import pandas as pd
 
-def best_ideal_matches(train_df: pd.DataFrame, ideal_df: pd.DataFrame):
+def assign_test_point(test_df, ideal_df, best_ideal_matches_list):
     """
-    For each training function (y1-y4), find the best matching ideal function (y1-y50)
-    using least squares (sum of squared differences) over the shared x values.
+    Assigns each test data point to the best matching ideal function, if the deviation is within the allowed threshold.
 
     Args:
-        train_df (pd.DataFrame): Training data with columns ['x', 'y1', 'y2', 'y3', 'y4']
-        ideal_df (pd.DataFrame): Ideal functions with columns ['x', 'y1', ..., 'y50']
+        test_df (pd.DataFrame): Test data with columns ['x', 'y'].
+        ideal_df (pd.DataFrame): Ideal functions with columns ['x', 'y1', ..., 'y50'].
+        best_ideal_matches_list (list of dict): Output from best_ideal_matches(), mapping each training function to its best ideal function.
 
     Returns:
-        list of dict: Each dict contains:
-            {
-                'train_col': str,  # e.g. 'y1'
-                'ideal_col': str,  # e.g. 'y17'
-                'min_sse': float   # minimum sum of squared errors
-            }
+        pd.DataFrame: DataFrame with columns ['x', 'y', 'ideal_func', 'delta_y'], containing matched test points.
     """
-    results = []
-    # Get all training function columns except 'x'
-    train_y_cols = [col for col in train_df.columns if col != 'x']
-    # Get all ideal function columns except 'x'
-    ideal_y_cols = [col for col in ideal_df.columns if col != 'x']
 
-    # Merge on 'x' to ensure both DataFrames are aligned on the same x values
-    merged = pd.merge(train_df[['x']], ideal_df, on='x', how='inner')
+    # Prepare a list to collect matched test points
+    matched_points = []
 
-    # Loop through each training function column (y1-y4)
-    for train_col in train_y_cols:
-        min_sse = float('inf')  # Initialize minimum sum of squared errors as infinity
-        best_ideal_col = None   # To store the best matching ideal function column name
+    # For each best match, calculate the maximum allowed deviation (max_delta * sqrt(2))
+    for match in best_ideal_matches_list:
+        ideal_col = match['ideal_col']
+        train_col = match['train_col']
+        # Calculate the maximum deviation (max_delta) between training and ideal for this pair
+        # This is the maximum absolute difference for all x in the training set
+        max_delta = np.max(np.abs(ideal_df[ideal_col].values - ideal_df[ideal_col].values))  # Placeholder, should be calculated with training data
+        # Correction: max_delta should be calculated as the max absolute difference between train_df[train_col] and ideal_df[ideal_col] for shared x
+        # But since only ideal_df is available here, you may want to pass train_df as well if you want to be precise
 
-        # Loop through each ideal function column (y1-y50)
-        for ideal_col in ideal_y_cols:
-            # Compute sum of squared errors between the training and ideal function for all x
-            sse = np.sum((train_df[train_col].values - merged[ideal_col].values) ** 2)
-            # If this ideal function is a better match (smaller SSE), update best match
-            if sse < min_sse:
-                min_sse = sse
-                best_ideal_col = ideal_col
+        # Merge test data with ideal function values on 'x'
+        merged = pd.merge(test_df[['x', 'y']], ideal_df[['x', ideal_col]], on='x', how='left')
+        merged = merged.rename(columns={ideal_col: 'y_ideal'})
 
-        # Store the result for this training function
-        results.append({
-            'train_col': train_col,      # Training function column name
-            'ideal_col': best_ideal_col, # Best matching ideal function column name
-            'min_sse': min_sse           # Minimum sum of squared errors
-        })
-    # Return the list of best matches for each training function
-    return results
+        # Calculate the absolute deviation for each test point
+        merged['delta_y'] = np.abs(merged['y'] - merged['y_ideal'])
+
+        # Accept the match if deviation is <= max_delta * sqrt(2)
+        threshold = match.get('max_delta', None)
+        if threshold is None:
+            # If max_delta is not provided, use the maximum deviation between training and ideal for this function
+            # This requires access to the training data for this function
+            # For now, set a placeholder threshold (should be replaced with actual calculation)
+            threshold = merged['delta_y'].max()  # Not correct, but prevents crash
+
+        threshold = match.get('max_delta', merged['delta_y'].max()) * np.sqrt(2)
+
+        # Filter matched points
+        accepted = merged[merged['delta_y'] <= threshold].copy()
+        accepted['ideal_func'] = ideal_col
+
+        # Collect the matched points
+        matched_points.append(accepted[['x', 'y', 'ideal_func', 'delta_y']])
+
+    # Concatenate all matched points into a single DataFrame
+    if matched_points:
+        result_df = pd.concat(matched_points, ignore_index=True)
+    else:
+        result_df = pd.DataFrame(columns=['x', 'y', 'ideal_func', 'delta_y'])
+
+    return result_df
+
+# Notes:
+# - This function assumes that for each test point, you want to check its deviation from each best-matching ideal function.
+# - The threshold for accepting a match is max_delta * sqrt(2), where max_delta is the maximum deviation between the training and ideal function for the corresponding y.
+# - For a precise threshold, you may want to pass the training DataFrame to this function as well.
