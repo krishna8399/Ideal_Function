@@ -56,4 +56,11 @@ See [LICENSE](LICENSE).
 - Name: Krishna Singh
 - Matriculation ID: 4252576
 - Course: DLMDSPWP01 – Programming with Python
-- University: IU International University of Applied Sciences https://www.iu.org
+- University: IU International University of Applied Scienceshttps://www.iu.org
+
+## Quick Start
+
+1. Obtain the required CSV data files (`train.csv`, `ideal.csv`, `test.csv`) and place them in the `data/` folder.
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
