@@ -1,52 +1,102 @@
-import sqlite3
-import pandas as pd
+"""
+database_writer.py
+Class for writing training data, ideal functions, and matched test points to an SQLite database using SQLAlchemy.
+"""
+
 import os
-os.makedirs('db', exist_ok=True) # Ensure the 'db' directory exists
+from sqlalchemy import create_engine, Column, Integer, Float, String, MetaData, Table
+from sqlalchemy.orm import sessionmaker
 
-def write_database(matched_test_points: pd.DataFrame, db_path="db/ideal.db"):
+class DatabaseWriter:
     """
-    Writes the matched test points to an SQLite database.
-    If the table does not exist, it will be created.
-
-    Args:
-        matched_test_points (pd.DataFrame): DataFrame containing columns ['x', 'y', 'ideal_func', 'delta_y'].
-        db_path (str): Path to the SQLite database file.
+    Handles writing training data, ideal functions, and matched test points to an SQLite database using SQLAlchemy.
     """
+    def __init__(self, db_path="db/ideal.db"):
+        # Ensure the 'db' directory exists
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        self.db_path = db_path
+        self.engine = create_engine(f"sqlite:///{self.db_path}")
+        self.metadata = MetaData()
 
-    # Connect to the SQLite database (creates the file if it doesn't exist)
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+        # Define training data table schema
+        self.training_data = Table(
+            'training_data', self.metadata,
+            Column('id', Integer, primary_key=True, autoincrement=True),
+            Column('x', Float),
+            Column('y1', Float),
+            Column('y2', Float),
+            Column('y3', Float),
+            Column('y4', Float)
+        )
 
-    # Create the table if it doesn't exist
-    create_table_query = """
-    CREATE TABLE IF NOT EXISTS matched_points (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        x REAL,
-        y REAL,
-        ideal_func TEXT,
-        delta_y REAL
-    );
-    """
-    cursor.execute(create_table_query)
+        # Define ideal functions table schema
+        ideal_columns = [Column('x', Float)]
+        ideal_columns += [Column(f'y{i}', Float) for i in range(1, 51)]
+        self.ideal_functions = Table(
+            'ideal_functions', self.metadata,
+            Column('id', Integer, primary_key=True, autoincrement=True),
+            *ideal_columns
+        )
 
-    # Prepare the data for insertion
-    # Only keep the required columns and convert to list of tuples
-    records_to_insert = matched_test_points[['x', 'y', 'ideal_func', 'delta_y']].values.tolist()
+        # Define matched test points table schema
+        self.matched_points = Table(
+            'matched_points', self.metadata,
+            Column('id', Integer, primary_key=True, autoincrement=True),
+            Column('x', Float),
+            Column('y', Float),
+            Column('ideal_func', String),
+            Column('delta_y', Float)
+        )
 
-    # Insert the data into the table
-    insert_query = """
-    INSERT INTO matched_points (x, y, ideal_func, delta_y)
-    VALUES (?, ?, ?, ?)
-    """
-    cursor.executemany(insert_query, records_to_insert)
+        # Create all tables if they don't exist
+        self.metadata.create_all(self.engine)
+        self.Session = sessionmaker(bind=self.engine)
 
-    # Commit the transaction and close the connection
-    conn.commit()
-    conn.close()
+    def write_training_data(self, train_df):
+        """
+        Writes training data to the database.
+        """
+        data_to_insert = [
+            {
+                'x': row['x'],
+                'y1': row['y1'],
+                'y2': row['y2'],
+                'y3': row['y3'],
+                'y4': row['y4']
+            }
+            for _, row in train_df.iterrows()
+        ]
+        with self.engine.connect() as conn:
+            conn.execute(self.training_data.insert(), data_to_insert)
+        print(f"Training data written to database.")
 
-    print(f"Successfully wrote {len(records_to_insert)} matched test points to the database at {db_path}.")
+    def write_ideal_functions(self, ideal_df):
+        """
+        Writes ideal functions to the database.
+        """
+        data_to_insert = []
+        for _, row in ideal_df.iterrows():
+            entry = {'x': row['x']}
+            for i in range(1, 51):
+                entry[f'y{i}'] = row.get(f'y{i}', None)
+            data_to_insert.append(entry)
+        with self.engine.connect() as conn:
+            conn.execute(self.ideal_functions.insert(), data_to_insert)
+        print(f"Ideal functions written to database.")
 
-# Notes:
-# - This function will create the database file and table if they do not exist.
-# - Each call appends new records to the table 'matched_points'.
-# - The table includes an auto-incrementing primary key 'id' for uniqueness.
+    def write_matched_points(self, matched_test_points):
+        """
+        Writes matched test points to the database.
+        """
+        data_to_insert = [
+            {
+                'x': row['x'],
+                'y': row['y'],
+                'ideal_func': row['ideal_func'],
+                'delta_y': row['delta_y']
+            }
+            for _, row in matched_test_points.iterrows()
+        ]
+        with self.engine.connect() as conn:
+            conn.execute(self.matched_points.insert(), data_to_insert)
+        print(f"Matched test points written to database.")

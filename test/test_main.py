@@ -1,56 +1,68 @@
+"""
+test_main.py
+Unit tests for all major modules in the Ideal Function Assignment project.
+"""
+
 import pandas as pd
-from src.data_loader import load_all_data
-from src.function_matcher import best_ideal_matches
-from src.test_assigner import assign_test_point
-from src.database_writer import write_database
+from src.data_handler import TrainingDataHandler, IdealFunctionHandler, TestDataHandler, DataLoadError
+from src.function_matcher import FunctionMatcher
+from src.test_assigner import TestAssigner
+from src.database_writer import DatabaseWriter
 
-def test_load_all_data():
-    """
-    Test that all CSV files are loaded correctly and are not empty.
-    """
-    train, ideal, test = load_all_data("data/ideal.csv", "data/test.csv", "data/train.csv")
-    assert train is not None, "Training data not loaded"
-    assert ideal is not None, "Ideal data not loaded"
-    assert test is not None, "Test data not loaded"
-    assert not train.empty, "Training data is empty"
-    assert not ideal.empty, "Ideal data is empty"
-    assert not test.empty, "Test data is empty"
-    # Check for expected columns
-    for col in ['x', 'y1']:
-        assert col in train.columns, f"Missing column {col} in training data"
-        assert col in ideal.columns, f"Missing column {col} in ideal data"
+def test_training_data_handler():
+    """Test loading of training data."""
+    handler = TrainingDataHandler("data/train.csv")
+    handler.load()
+    assert handler.data is not None
+    assert not handler.data.empty
 
-def test_best_ideal_matches():
-    """
-    Test that the matching function returns a list of 4 dicts (one for each training function).
-    """
-    train, ideal, _ = load_all_data("data/ideal.csv", "data/test.csv", "data/train.csv")
-    matches = best_ideal_matches(train, ideal)
-    assert isinstance(matches, list), "Matches should be a list"
-    assert len(matches) == 4, "Should return 4 matches (for y1-y4)"
-    for match in matches:
-        assert isinstance(match, dict), "Each match should be a dict"
-        assert 'ideal_col' in match, "Match dict missing 'ideal_col' key"
+def test_ideal_function_handler():
+    """Test loading of ideal function data."""
+    handler = IdealFunctionHandler("data/ideal.csv")
+    handler.load()
+    assert handler.data is not None
+    assert not handler.data.empty
 
-def test_assign_test_point():
-    """
-    Test that test points are assigned and the output DataFrame contains the expected columns.
-    """
-    train, ideal, test = load_all_data("data/ideal.csv", "data/test.csv", "data/train.csv")
-    matches = best_ideal_matches(train, ideal)
-    matched = assign_test_point(test, ideal, matches)
-    assert isinstance(matched, pd.DataFrame), "Output should be a DataFrame"
-    for col in ['x', 'y', 'ideal_func', 'delta_y']:
-        assert col in matched.columns, f"Missing column {col} in matched test points"
+def test_test_data_handler():
+    """Test loading of test data."""
+    handler = TestDataHandler("data/test.csv")
+    handler.load()
+    assert handler.data is not None
+    assert not handler.data.empty
 
-def test_write_database(tmp_path):
-    """
-    Test that matched test points can be written to a database file.
-    """
-    train, ideal, test = load_all_data("data/ideal.csv", "data/test.csv", "data/train.csv")
-    matches = best_ideal_matches(train, ideal)
-    matched = assign_test_point(test, ideal, matches)
+def test_function_matcher():
+    """Test matching of training functions to ideal functions."""
+    train = pd.read_csv("data/train.csv")
+    ideal = pd.read_csv("data/ideal.csv")
+    matcher = FunctionMatcher(train, ideal)
+    matches = matcher.best_ideal_matches()
+    assert isinstance(matches, list)
+    assert len(matches) == 4
+
+def test_test_assigner():
+    """Test assignment of test points to ideal functions."""
+    train = pd.read_csv("data/train.csv")
+    ideal = pd.read_csv("data/ideal.csv")
+    test = pd.read_csv("data/test.csv")
+    matcher = FunctionMatcher(train, ideal)
+    matches = matcher.best_ideal_matches()
+    assigner = TestAssigner(test, ideal, matches, train)
+    matched = assigner.assign()
+    assert isinstance(matched, pd.DataFrame)
+    assert 'delta_y' in matched.columns
+
+def test_database_writer(tmp_path):
+    """Test writing all tables to the database."""
+    train = pd.read_csv("data/train.csv")
+    ideal = pd.read_csv("data/ideal.csv")
+    test = pd.read_csv("data/test.csv")
+    matcher = FunctionMatcher(train, ideal)
+    matches = matcher.best_ideal_matches()
+    assigner = TestAssigner(test, ideal, matches, train)
+    matched = assigner.assign()
     db_path = tmp_path / "test_ideal.db"
-    write_database(matched, db_path=str(db_path))
-    assert db_path.exists(), "Database file was not created"
-    
+    db_writer = DatabaseWriter(db_path=str(db_path))
+    db_writer.write_training_data(train)
+    db_writer.write_ideal_functions(ideal)
+    db_writer.write_matched_points(matched)
+    assert db_path.exists()
