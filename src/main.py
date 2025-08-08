@@ -68,7 +68,7 @@ for i in range(1, 5):
     ideal_col = ideal_info.get('ideal_col')
     if ideal_col and ideal_col in ideal_data_function.columns:
         ax.plot(ideal_data_function['x'], ideal_data_function[ideal_col], '--', label=f'Ideal {ideal_col}')
-        ax.set_title(f'{train_col} vs. {ideal_col}')
+        ax.set_title(f'Matplotlib Overlay: {train_col} vs. {ideal_col}')
     else:
         ax.set_title(f"Column {ideal_col} not found")
         continue
@@ -82,7 +82,7 @@ plt.show()
 if 'delta_y' in matched_test_points.columns:
     plt.figure(figsize=(7, 4))
     plt.hist(matched_test_points['delta_y'], bins=30, color='skyblue', edgecolor='black')
-    plt.title('Histogram of Test Point Deviations')
+    plt.title('Matplotlib Histogram: Test Point Deviations')
     plt.xlabel('Deviation (|y_test - y_ideal|)')
     plt.ylabel('Count')
     plt.tight_layout()
@@ -92,9 +92,9 @@ else:
 
 # STEP 6: Interactive visualization using Bokeh
 from bokeh.plotting import figure, show, output_file
-from bokeh.layouts import gridplot
+from bokeh.layouts import gridplot, column
 from bokeh.palettes import Category10
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, Div
 import numpy as np
 
 # Set output file for Bokeh visualizations (opens in browser)
@@ -106,14 +106,13 @@ for i in range(1, 5):
     train_col = f'y{i}'
     ideal_info = best_ideal_matches_list[i-1]
     ideal_col = ideal_info.get('ideal_col')
-    p = figure(title=f"{train_col} vs. {ideal_col}", width=400, height=300, x_axis_label='x', y_axis_label='y')
+    p = figure(title=f"Bokeh Overlay: {train_col} vs. {ideal_col}", width=400, height=300, x_axis_label='x', y_axis_label='y')
     p.line(train_data_function['x'], train_data_function[train_col], legend_label=f"Training {train_col}", color="blue", line_width=2)
     if ideal_col and ideal_col in ideal_data_function.columns:
         p.line(ideal_data_function['x'], ideal_data_function[ideal_col], legend_label=f"Ideal {ideal_col}", color="red", line_dash="dashed", line_width=2)
     p.legend.location = "top_left"
     plots.append(p)
 grid = gridplot([[plots[0], plots[1]], [plots[2], plots[3]]])
-show(grid)
 
 # Scatter plot: Test points colored by assigned ideal function
 if 'ideal_func' in matched_test_points.columns:
@@ -126,22 +125,30 @@ if 'ideal_func' in matched_test_points.columns:
         ideal_func=matched_test_points['ideal_func'],
         color=colors
     ))
-    p_scatter = figure(title="Test Point Assignments", width=600, height=400, x_axis_label='x', y_axis_label='y', tools="pan,wheel_zoom,box_zoom,reset,hover")
+    p_scatter = figure(title="Bokeh Scatter: Test Point Assignments", width=600, height=400, x_axis_label='x', y_axis_label='y', tools="pan,wheel_zoom,box_zoom,reset,hover")
     p_scatter.scatter('x', 'y', color='color', legend_field='ideal_func', source=source, size=8)
     p_scatter.legend.title = "Ideal Function"
     p_scatter.legend.location = "top_left"
-    show(p_scatter)
 else:
-    print("Column 'ideal_func' not found in matched_test_points. Scatter plot skipped.")
+    p_scatter = Div(text="<b>Bokeh Scatter: Test Point Assignments</b><br>Column 'ideal_func' not found in matched_test_points. Scatter plot skipped.")
 
 # Interactive histogram: Distribution of deviations for matched test points
 if 'delta_y' in matched_test_points.columns:
     hist, edges = np.histogram(matched_test_points['delta_y'], bins=30)
-    p_hist = figure(title="Histogram of Test Point Deviations", width=600, height=400, x_axis_label='Deviation', y_axis_label='Count')
+    p_hist = figure(title="Bokeh Histogram: Test Point Deviations", width=600, height=400, x_axis_label='Deviation', y_axis_label='Count')
     p_hist.quad(top=hist, bottom=0, left=edges[:-1], right=edges[1:], fill_color="skyblue", line_color="black")
-    show(p_hist)
 else:
-    print("Column 'delta_y' not found in matched_test_points. Histogram skipped.")
+    p_hist = Div(text="<b>Bokeh Histogram: Test Point Deviations</b><br>Column 'delta_y' not found in matched_test_points. Histogram skipped.")
+
+# Combine all Bokeh plots into a single layout and show once
+show(column(
+    Div(text="<h2>Bokeh Overlay: Training vs. Ideal Functions</h2>"),
+    grid,
+    Div(text="<h2>Bokeh Scatter: Test Point Assignments</h2>"),
+    p_scatter,
+    Div(text="<h2>Bokeh Histogram: Test Point Deviations</h2>"),
+    p_hist
+))
 
 # STEP 7: Print efficiency metrics and summary
 total_test_points = len(test_data_function)
