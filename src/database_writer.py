@@ -1,5 +1,7 @@
 import sqlite3
 import pandas as pd
+import os
+os.makedirs('db', exist_ok=True) # Ensure the 'db' directory exists
 
 def write_database(matched_test_points: pd.DataFrame, db_path="db/ideal.db"):
     """
