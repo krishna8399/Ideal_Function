@@ -50,3 +50,10 @@ git push origin develop
 
 ## License
 See [LICENSE](LICENSE).
+
+## Author / Student Details
+
+- Name: Krishna Singh
+- Matriculation ID: 4252576
+- Course: DLMDSPWP01 – Programming with Python
+- University: IU International University of Applied Sciences https://www.iu.org
