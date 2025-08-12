@@ -52,6 +52,15 @@ matched_test_points = assigner.assign()
 
 # STEP 4: Write all results to the database using SQLAlchemy
 db_writer = DatabaseWriter(db_path="db/ideal.db")
+
+# Print DataFrame shapes before writing to database
+print("Training data shape:", train_data_function.shape)
+print(train_data_function.head())
+print("Ideal data shape:", ideal_data_function.shape)
+print(ideal_data_function.head())
+print("Matched test points shape:", matched_test_points.shape)
+print(matched_test_points.head())
+
 db_writer.write_training_data(train_data_function)
 db_writer.write_ideal_functions(ideal_data_function)
 db_writer.write_matched_points(matched_test_points)

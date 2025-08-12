@@ -51,11 +51,15 @@ class DatabaseWriter:
         # Create all tables if they don't exist
         self.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
+        print("Writing to DB file:", os.path.abspath("db/ideal.db"))
 
     def write_training_data(self, train_df):
         """
         Writes training data to the database.
         """
+        if train_df.empty:
+            print("Training DataFrame is empty. Nothing to write.")
+            return
         data_to_insert = [
             {
                 'x': row['x'],
@@ -66,28 +70,37 @@ class DatabaseWriter:
             }
             for _, row in train_df.iterrows()
         ]
-        with self.engine.connect() as conn:
+        with self.engine.begin() as conn:
             conn.execute(self.training_data.insert(), data_to_insert)
-        print(f"Training data written to database.")
+            result = conn.execute(self.training_data.select())
+            print("Rows in training_data table after insert:", len(result.fetchall()))
 
     def write_ideal_functions(self, ideal_df):
         """
         Writes ideal functions to the database.
         """
+        if ideal_df.empty:
+            print("Ideal Function DataFrame is empty. Nothing to write.")
+            return
         data_to_insert = []
         for _, row in ideal_df.iterrows():
             entry = {'x': row['x']}
             for i in range(1, 51):
-                entry[f'y{i}'] = row.get(f'y{i}', None)
+                col_name = f'y{i}'
+                entry[col_name] = row.get(col_name, None)
             data_to_insert.append(entry)
-        with self.engine.connect() as conn:
+        with self.engine.begin() as conn:
             conn.execute(self.ideal_functions.insert(), data_to_insert)
-        print(f"Ideal functions written to database.")
+            result = conn.execute(self.ideal_functions.select())
+            print("Rows in ideal_functions table after insert:", len(result.fetchall()))
 
     def write_matched_points(self, matched_test_points):
         """
         Writes matched test points to the database.
         """
+        if matched_test_points.empty:
+            print("Matched Test Points DataFrame is empty. Nothing to write.")
+            return
         data_to_insert = [
             {
                 'x': row['x'],
@@ -97,6 +110,9 @@ class DatabaseWriter:
             }
             for _, row in matched_test_points.iterrows()
         ]
-        with self.engine.connect() as conn:
+        with self.engine.begin() as conn:
             conn.execute(self.matched_points.insert(), data_to_insert)
-        print(f"Matched test points written to database.")
+            result = conn.execute(self.matched_points.select())
+            print("Rows in matched_points table after insert:", len(result.fetchall()))
+
+        print(matched_test_points.shape)
