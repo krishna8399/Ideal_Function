@@ -1,6 +1,7 @@
 """
 test_assigner.py
-Class for assigning test points to ideal functions based on deviation criterion.
+Assigns each test point to the closest candidate model if within tolerance.
+Encapsulates assignment logic for clarity and future extension.
 """
 
 import pandas as pd
@@ -8,50 +9,48 @@ import numpy as np
 
 class TestAssigner:
     """
-    Assigns each test point to the closest ideal function if deviation is within allowed threshold.
+    Assigns test points to candidate models based on deviation tolerance.
+    Modular design allows for easy changes to assignment logic.
     """
-    def __init__(self, test_df, ideal_df, matches, train_df):
-        self.test_df = test_df
-        self.ideal_df = ideal_df
-        self.matches = matches
-        self.train_df = train_df
+    def __init__(self, test_data, candidate_models, best_matches, training_data, tolerance_func=None):
+        self.test_data = test_data
+        self.candidate_models = candidate_models
+        self.best_matches = best_matches
+        self.training_data = training_data
+        self.tolerance_func = tolerance_func
 
     def assign(self):
         """
-        Returns a DataFrame of matched test points with columns: x, y, ideal_func, delta_y.
-        Only assigns points that meet the deviation criterion.
+        Assigns each test point to a candidate model if deviation is within tolerance.
+        Returns a DataFrame of matched points.
         """
-        results = []
-        # Iterate over each test point
-        for idx, row in self.test_df.iterrows():
-            x = row['x']
-            y = row['y']
-            assigned = False
-            # Try to assign to one of the four chosen ideal functions
-            for match in self.matches:
-                ideal_col = match['ideal_col']
-                # Find the corresponding ideal y value for this x
-                ideal_row = self.ideal_df[self.ideal_df['x'] == x]
-                if not ideal_row.empty:
-                    y_ideal = ideal_row.iloc[0][ideal_col]
-                    delta_y = abs(y - y_ideal)
-                    # Calculate max allowed deviation for assignment
-                    train_col = match['train_col']
-                    train_row = self.train_df[self.train_df['x'] == x]
-                    if not train_row.empty:
-                        train_y = train_row.iloc[0][train_col]
-                        max_dev = np.max(np.abs(self.train_df[train_col] - self.ideal_df[ideal_col]))
-                        threshold = max_dev * np.sqrt(2)
-                        if delta_y <= threshold:
-                            results.append({
-                                'x': x,
-                                'y': y,
-                                'ideal_func': ideal_col,
-                                'delta_y': delta_y
-                            })
-                            assigned = True
-                            break
-            if not assigned:
-                # Optionally, add unmatched points or skip
-                pass
-        return pd.DataFrame(results)
+        assigned = []
+        for idx, row in self.test_data.iterrows():
+            x_val, y_val = row['x'], row['y']
+            match_info = self._find_assignment(x_val, y_val)
+            if match_info:
+                assigned.append(match_info)
+        return pd.DataFrame(assigned, columns=['x', 'y', 'ideal_func', 'delta_y'])
+
+    def _find_assignment(self, x_val, y_val):
+        """
+        Helper to find assignment for a single test point.
+        Checks each candidate model for tolerance and returns assignment info if matched.
+        """
+        for match in self.best_matches:
+            candidate_col = match['ideal_col']
+            candidate_row = self.candidate_models[self.candidate_models['x'] == x_val]
+            if candidate_row.empty:
+                continue
+            candidate_y = candidate_row[candidate_col].values[0]
+            delta_y = abs(y_val - candidate_y)
+            train_col = match['train_col']
+            train_row = self.training_data[self.training_data['x'] == x_val]
+            if train_row.empty:
+                continue
+            train_y = train_row[train_col].values[0]
+            max_dev = abs(train_y - candidate_y)
+            tolerance = self.tolerance_func(max_dev) if self.tolerance_func else (2 ** 0.5) * max_dev
+            if delta_y <= tolerance:
+                return {'x': x_val, 'y': y_val, 'ideal_func': candidate_col, 'delta_y': delta_y}
+        return None

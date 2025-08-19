@@ -4,7 +4,9 @@ Unit tests for all major modules in the Ideal Function Assignment project.
 """
 
 import pandas as pd
+import pytest
 from src.data_handler import TrainingDataHandler, IdealFunctionHandler, TestDataHandler, DataLoadError
+from src.data_loader import load_csv
 from src.function_matcher import FunctionMatcher
 from src.test_assigner import TestAssigner
 from src.database_writer import DatabaseWriter
@@ -15,6 +17,12 @@ def test_training_data_handler():
     handler.load()
     assert handler.data is not None
     assert not handler.data.empty
+
+def test_training_data_handler_loads_data():
+    handler = TrainingDataHandler("data/train.csv")
+    handler.load()
+    assert handler.data is not None
+    assert 'x' in handler.data.columns
 
 def test_ideal_function_handler():
     """Test loading of ideal function data."""

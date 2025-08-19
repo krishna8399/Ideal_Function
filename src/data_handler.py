@@ -1,53 +1,61 @@
 """
 data_handler.py
-Classes for loading CSV data for training, ideal, and test datasets.
-Includes inheritance and custom exception handling.
+Classes for managing training, candidate, and test datasets.
+Each handler loads and validates its respective dataset, raising a custom error if loading fails.
 """
 
-import pandas as pd
+from src.data_loader import load_csv
 
 class DataLoadError(Exception):
-    """Custom exception for data loading errors."""
+    """Custom exception for data loading errors to make error handling explicit."""
     pass
 
-class DataHandler:
+class TrainingDataHandler:
     """
-    Base class for loading CSV data.
+    Handles loading and validation of training data.
+    Using a class allows for future extension (e.g., preprocessing, feature engineering).
     """
     def __init__(self, filepath):
         self.filepath = filepath
         self.data = None
 
     def load(self):
-        """
-        Loads CSV data into a DataFrame.
-        Raises DataLoadError if loading fails.
-        """
+        # Load training data and validate expected columns.
         try:
-            self.data = pd.read_csv(self.filepath)
+            self.data = load_csv(self.filepath, expected_columns=['x', 'y1', 'y2', 'y3', 'y4'])
         except Exception as e:
-            raise DataLoadError(f"Failed to load {self.filepath}: {e}")
+            # Raise a custom error for clarity in main workflow.
+            raise DataLoadError(f"Training data load failed: {e}")
 
-class TrainingDataHandler(DataHandler):
+class IdealFunctionHandler:
     """
-    Handles loading of training data.
-    Inherits from DataHandler.
+    Handles loading and validation of candidate models (ideal functions).
+    This class can be extended for model selection or filtering.
     """
     def __init__(self, filepath):
-        super().__init__(filepath)
+        self.filepath = filepath
+        self.data = None
 
-class IdealFunctionHandler(DataHandler):
+    def load(self):
+        # Load candidate models and validate expected columns.
+        expected_cols = ['x'] + [f'y{i}' for i in range(1, 51)]
+        try:
+            self.data = load_csv(self.filepath, expected_columns=expected_cols)
+        except Exception as e:
+            raise DataLoadError(f"Candidate models load failed: {e}")
+
+class TestDataHandler:
     """
-    Handles loading of ideal function data.
-    Inherits from DataHandler.
+    Handles loading and validation of test data.
+    Encapsulating this logic makes it easier to add test data checks or transformations.
     """
     def __init__(self, filepath):
-        super().__init__(filepath)
+        self.filepath = filepath
+        self.data = None
 
-class TestDataHandler(DataHandler):
-    """
-    Handles loading of test data.
-    Inherits from DataHandler.
-    """
-    def __init__(self, filepath):
-        super().__init__(filepath)
+    def load(self):
+        # Load test data and validate expected columns.
+        try:
+            self.data = load_csv(self.filepath, expected_columns=['x', 'y'])
+        except Exception as e:
+            raise DataLoadError(f"Test data load failed: {e}")

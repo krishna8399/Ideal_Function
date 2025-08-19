@@ -1,38 +1,52 @@
 """
 function_matcher.py
-Class for matching training functions to ideal functions using least squares.
+Matches each training function to the closest candidate model using least squares.
+Encapsulates matching logic for clarity and future extensibility.
 """
 
 import numpy as np
 
 class FunctionMatcher:
     """
-    Matches each training function to the best-fitting ideal function using least squares.
+    Matches training functions to candidate models using least squares.
+    Designed for modularity and easy replacement of matching logic.
     """
-    def __init__(self, train_df, ideal_df):
-        self.train_df = train_df
-        self.ideal_df = ideal_df
+    def __init__(self, training_data, candidate_models):
+        self.training_data = training_data
+        self.candidate_models = candidate_models
 
-    def best_ideal_matches(self):
+    def select_closest_function(self):
         """
-        Returns a list of dicts with the best ideal function for each training function.
-        Each dict contains train_col, ideal_col, and min_sse.
+        For each training function, finds the candidate model with the lowest sum of squared errors.
+        Returns a list of dicts with match info.
         """
         matches = []
-        # Loop through each training function (y1-y4)
         for i in range(1, 5):
             train_col = f'y{i}'
-            min_sse = float('inf')
-            best_ideal_col = None
-            # Compare with each ideal function (y1-y50)
-            for ideal_col in [col for col in self.ideal_df.columns if col.startswith('y')]:
-                sse = np.sum((self.train_df[train_col] - self.ideal_df[ideal_col]) ** 2)
-                if sse < min_sse:
-                    min_sse = sse
-                    best_ideal_col = ideal_col
+            best_candidate, min_sse = self._find_best_candidate(train_col)
             matches.append({
                 'train_col': train_col,
-                'ideal_col': best_ideal_col,
+                'ideal_col': best_candidate,
                 'min_sse': min_sse
             })
         return matches
+
+    def best_ideal_matches(self):
+        # For compatibility with main.py; both names supported.
+        return self.select_closest_function()
+
+    def _find_best_candidate(self, train_col):
+        """
+        Helper to find the closest candidate model for a given training column.
+        Uses sum of squared errors as the matching criterion.
+        """
+        min_sse = float('inf')
+        best_candidate = None
+        train_y = self.training_data[train_col].values
+        for candidate_col in [col for col in self.candidate_models.columns if col.startswith('y')]:
+            candidate_y = self.candidate_models[candidate_col].values
+            sse = np.sum((train_y - candidate_y) ** 2)
+            if sse < min_sse:
+                min_sse = sse
+                best_candidate = candidate_col
+        return best_candidate, min_sse

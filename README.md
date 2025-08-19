@@ -1,66 +1,58 @@
 # Ideal Function Assignment Project
 
 ## Overview
-This project loads training, ideal, and test datasets, matches training functions to ideal functions using least squares, assigns test points, stores results in a SQLite database (via SQLAlchemy), and visualizes results with Matplotlib and Bokeh.
 
-## Data Privacy & Submission
-**Note:**  
-As required by the assignment guidelines, the actual data files (`train.csv`, `ideal.csv`, `test.csv`) are **not included** in this submission.  
-To run the code, you will need to request access to the datasets.
+This project matches training functions to candidate models using least squares, assigns test points based on deviation tolerance, stores results in a SQLite database, and visualizes the results.
 
-## Features
-- Object-oriented design with inheritance
-- Custom exception handling
-- SQLAlchemy database integration
-- Interactive Bokeh and static Matplotlib visualizations
-- Unit tests for all major modules
+## Unique Features
 
-## Installation
-```bash
-pip install -r requirements.txt
-```
+- Modular class-based design for data handling, matching, assignment, and database writing.
+- Configurable tolerance for assignment.
+- Extensive use of explanatory comments and helper functions.
+- Consistent naming conventions for clarity.
+- Interactive and static visualizations.
+- Robust error handling and validation.
+
+## Workflow
+
+1. **Load Data:**  
+   Training, candidate, and test datasets are loaded and validated using custom handler classes.
+
+2. **Match Functions:**  
+   Training functions are matched to candidate models using least squares via `FunctionMatcher`.
+
+3. **Assign Test Points:**  
+   Test points are assigned to candidate models if within a configurable tolerance using `TestAssigner`.
+
+4. **Store Results:**  
+   All results are written to a SQLite database using `DatabaseWriter`.
+
+5. **Visualize:**  
+   Results are visualized using Matplotlib and Bokeh.
 
 ## Usage
+
 ```bash
 python src/main.py
 ```
-- Interactive Bokeh visualizations will open in your browser as `ideal_function_bokeh_visualizations.html`.
 
-## Testing
-```bash
-pytest
-```
+## File Structure
 
-## Project Structure
-- `src/`: Source code modules
-- `test/`: Unit tests
-- `db/`: SQLite database (auto-created)
-- `data/`: Input CSV files (**not included in submission**)
+- `src/data_loader.py` - Utility functions for loading and previewing CSV data.
+- `src/data_handler.py` - Classes for managing and validating datasets.
+- `src/function_matcher.py` - Matches training functions to candidate models.
+- `src/test_assigner.py` - Assigns test points to candidate models.
+- `src/database_writer.py` - Writes results to SQLite database.
+- `src/main.py` - Main workflow script.
 
-## Git Workflow Example
-```bash
-git clone <repo-url>
-cd <repo-folder>
-git checkout develop
-git add <changed-files>
-git commit -m "Describe your changes"
-git push origin develop
-# Create a pull request on your Git platform
-```
+## Configuration
 
-## License
-See [LICENSE](LICENSE).
+Tolerance for assignment is configurable via a utility function in `main.py`.
 
-## Author / Student Details
+## Tests
 
-- Name: Krishna Singh
-- Matriculation ID: 4252576
-- Course: DLMDSPWP01 – Programming with Python
-- University: IU International University of Applied Scienceshttps://www.iu.org
+See `tests/test_function_matcher.py` and `tests/test_assigner.py` for example unit tests.
 
-## Quick Start
+## Author
 
-1. Obtain the required CSV data files (`train.csv`, `ideal.csv`, `test.csv`) and place them in the `data/` folder.
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
+Your Name, Matriculation Number, Course Code, University
